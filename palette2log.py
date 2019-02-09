@@ -14,7 +14,10 @@ def hex2float( hexnum):
     try:
         return struct.unpack('!f', bytes.fromhex(hexnum))[0]
     except:
-        return struct.unpack('!f', hexnum.decode('hex'))[0]
+        try:
+            return struct.unpack('!f', hexnum.decode('hex'))[0]
+        except:
+            return 0.0
 
 def hex2int( hexnum):
     return  int(hexnum, 16)
@@ -26,6 +29,9 @@ def main(args):
     inPing = False
     pingString=""
     stepspermm = 1
+
+    filamentchanges = []
+    filament='-'
 
     try:
         with open(input_file) as opf:
@@ -39,12 +45,38 @@ def main(args):
     var_addoff = 0
     var_pingnum = 0
     var_pinglen = 0
+    filamentProduced = 0
     pongline = ""
+    lasttimestamp = -1
+    splices = []
+    splicefilament=[]
 
+
+    print("Starting analysis of {} lines".format(len(log_records)))
     for index in range(len(log_records)):
         if  "octoprint.plugins.palette2" in log_records[index]:
+
             log_line = log_records[index]
+
+            timestamp = int(log_line[11:13])*3600 + int(log_line[14:16])*60 + float(log_line[17:23].replace(",","."))
+
+            if lasttimestamp == -1:
+                lasttimestamp = timestamp
+
+            while timestamp < lasttimestamp:
+                timestamp += 86400
+
+
+            if (timestamp-lasttimestamp)>60:
+                #print("At {} - Data gap of {:-5.2f}  seconds".format(log_line[0:22],timestamp-lasttimestamp))
+                pass
+            lasttimestamp = timestamp
+
+
             if "Got Version: O21 D0014" in log_line:
+
+                for line in filamentchanges:
+                    print(line)
                 #start of a new print detected
                 printNum += 1
                 pintdisy=0
@@ -53,14 +85,16 @@ def main(args):
                 printinfo = True
                 inping = False
                 print("\n\n----------------------------PRINT #{:3}---------------------------------\n".format(printNum))
-
+                filamentchanges = []
+                filament = "-"
             if inPrint:
 
 
-                fields = log_line.rstrip('\n').split(" ")
+                fields = log_line.strip().split(" ")
+
 
                 if " Omega Write Thread: Sending: O1" in log_line:
-                    print("Printing  {}   ===  length  {:-8.2f}mm\n".format(fields[-2][1:], hex2float(fields[-1][1:])))
+                    print("Printing  {}   -=-  length  {:.2f}mm\n".format(fields[-2][1:], hex2float(fields[-1][1:])))
 
                 if printinfo and "sending to palette: O22" in log_line:
                     print("P2 - Printer Profile: {}".format(fields[-1][1:]))
@@ -81,6 +115,34 @@ def main(args):
 
                 if printinfo and "read in line: Tube length" in log_line:
                     print("P2 Tube length: {:-3.2f}cm".format(int(fields[-1])/100))
+
+
+                if "Got splice D:" in log_line:
+                    splices.append(hex2float(log_line[-10:].strip()))
+                    splicefilament.append(log_line[83])
+
+
+                if "O97 U26 D" in log_line:
+                    filamentProduced = hex2int(log_line[-10:].strip())
+
+                if "Current Drive:" in log_line:
+                    splicefilamentfrom=log_line[-3]
+
+
+                if "moving filament in drive" in log_line:
+                    splicefilamentact=log_line[89]
+
+                if "O97 U25 D1" in log_line:
+                    effect_splice= hex2int(log_line[-6:].strip())
+                    if splicefilamentact == splicefilament[effect_splice]:
+                        warning = ""
+                    else:
+                        warning = "****"
+
+
+                    filamentchanges.append("{:04}\t\t{}\t\t\t{}\t\t\t{:6}\t\t{}\t\t{:-8.2f}\t\t{}\t\t".format(effect_splice, splicefilamentfrom, splicefilamentact, filamentProduced,splicefilament[effect_splice], splices[effect_splice-1],warning))
+                    splicefilament.append(splicefilament[-1])
+                    splices.append(splices[-1])
 
                 if "sending to palette: O31 D" in log_line:
                     pingdist = hex2float(fields[-1][1:])
@@ -117,21 +179,31 @@ def main(args):
 
 
 
-                    if "Omega: read in line: O34 D1" in log_line:
-                        var_pingnum = float(fields[-2][1:])
-                        var_pingidx = hex2int(fields[-1][1:])
+
+                    if "Omega: read in line: O34" in log_line:
+                        if "O34 D1" in log_line:
+                             var_pingnum = float(fields[-2][1:])
+                             var_pingidx = hex2int(fields[-1][1:])
+
                         if (printinfo):
                             print("\n PING\t\t   (%),\t\tGCODE,\t\t ACTUAL,\t\tEX_CT(?),\tAdd Off\t\tPONG \t\tACTUAL")
                             print("-----------------------------------------------------------------------------------------------------")
                             print(pongline[1:])
                             pongline = ""
 
-                        print("    {:04}\t{:-8.2f}\t{:-8.2f}\t{:-8.2f}\t{:-8}\t{:-8}".format(var_pingidx,var_pingnum,pingdist,var_act,var_exct,var_addoff))
+                        if "O34 D0" in log_line:
+                            print("REJECTED PING")
+                        else:
+                            print("    {:04}\t{:-8.2f}\t{:-8.2f}\t{:-8.2f}\t{:-8}\t{:-8}".format(var_pingidx,var_pingnum,pingdist,var_act,var_exct,var_addoff))
 
-                        inping = False
+
+                        inPing = False
                         printinfo = False
 
-
+    print("\nSPLICE\t\tfrom\t\tTo\t\tPosition\t\tTo(Gcode)\tPos(Gcode)\n")
+    print("-----------------------------------------------------------------------------------------------------")
+    for line in filamentchanges:
+        print(line)
 
 
 if __name__ == "__main__":
