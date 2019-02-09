@@ -200,10 +200,11 @@ def main(args):
                         inPing = False
                         printinfo = False
 
-    print("\nSPLICE\t\tfrom\t\tTo\t\tPosition\t\tTo(Gcode)\tPos(Gcode)\n")
-    print("-----------------------------------------------------------------------------------------------------")
-    for line in filamentchanges:
-        print(line)
+    if len(filamentchanges)>0:
+        print("\nSPLICE\t\tfrom\t\tTo\t\tPosition\t\tTo(Gcode)\tPos(Gcode)\n")
+        print("-----------------------------------------------------------------------------------------------------")
+        for line in filamentchanges:
+            print(line)
 
 
 if __name__ == "__main__":
