@@ -118,15 +118,15 @@ def main(args):
 
 
                 if "Got splice D:" in log_line:
-                    splices.append(hex2float(log_line[-10:].strip()))
+                    splices.append(hex2float(log_line.strip()[-8:]))
                     splicefilament.append(log_line[83])
 
 
                 if "O97 U26 D" in log_line:
-                    filamentProduced = hex2int(log_line[-10:].strip())
+                    filamentProduced = hex2int(log_line.strip()[-8:])
 
                 if "Current Drive:" in log_line:
-                    splicefilamentfrom=log_line[-3]
+                    splicefilamentfrom=log_line.strip()[-1]
 
 
                 if "moving filament in drive" in log_line:
@@ -134,7 +134,7 @@ def main(args):
 
                 if "O97 U25 D1" in log_line:
                     warning = ""
-                    effect_splice= hex2int(log_line[-6:].strip())
+                    effect_splice= hex2int(log_line.strip()[-4:])
                     if len(splicefilament) > effect_splice:
                         sf = splicefilament[effect_splice]
                         sf2=splices[effect_splice-1]
