@@ -133,14 +133,21 @@ def main(args):
                     splicefilamentact=log_line[89]
 
                 if "O97 U25 D1" in log_line:
+                    warning = ""
                     effect_splice= hex2int(log_line[-6:].strip())
-                    if splicefilamentact == splicefilament[effect_splice]:
-                        warning = ""
+                    if len(splicefilament) > effect_splice:
+                        sf = splicefilament[effect_splice]
+                        sf2=splices[effect_splice-1]
+                        if splicefilamentact == splicefilament[effect_splice]:
+                            warning = ""
+                        else:
+                            warning = "****"
                     else:
-                        warning = "****"
+                        sf=-1
+                        sf2=-1
 
 
-                    filamentchanges.append("{:04}\t\t{}\t\t\t{}\t\t\t{:6}\t\t{}\t\t{:-8.2f}\t\t{}\t\t".format(effect_splice, splicefilamentfrom, splicefilamentact, filamentProduced,splicefilament[effect_splice], splices[effect_splice-1],warning))
+                    filamentchanges.append("{:04}\t\t{}\t\t{}\t\t{:6}\t\t{}\t\t{:-8.2f}\t\t{}\t\t".format(effect_splice, splicefilamentfrom, splicefilamentact, filamentProduced,sf, sf2,warning))
                     splicefilament.append(splicefilament[-1])
                     splices.append(splices[-1])
 
@@ -177,9 +184,6 @@ def main(args):
                     if "Ping Additive Offset (st):" in log_line:
                         var_addoff =int(fields[-1])
 
-
-
-
                     if "Omega: read in line: O34" in log_line:
                         if "O34 D1" in log_line:
                              var_pingnum = float(fields[-2][1:])
@@ -201,11 +205,12 @@ def main(args):
                         printinfo = False
 
     if len(filamentchanges)>0:
-        print("\nSPLICE\t\tfrom\t\tTo\t\tPosition\t\tTo(Gcode)\tPos(Gcode)\n")
-        print("-----------------------------------------------------------------------------------------------------")
+        print("\n-------------------------------------------------------------------------")
+        print("SPLICE\t\tFROM\tTO\t\t\tPOS\t\tTo(P2)\t\tPos(P2)")
+        print("-------------------------------------------------------------------------")
         for line in filamentchanges:
             print(line)
-
+        print("-------------------------------------------------------------------------")
 
 if __name__ == "__main__":
       main(vars(arguments.parse_args()))
